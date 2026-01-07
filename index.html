@@ -36,15 +36,34 @@ document.getElementById("date").innerText =
   today.toDateString();
 
 function addExpense() {
+  const item = document.getElementById("item").value;
+  const amount = document.getElementById("amount").value;
+
+  if (!item || !amount) {
+    alert("Please enter item and amount");
+    return;
+  }
+
+  const today = new Date();
+
   fetch(API_URL, {
     method: "POST",
+    mode: "no-cors",      // ⭐ THIS IS THE FIX
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({
       date: today.toLocaleDateString(),
-      day: today.toLocaleString('en-us', { weekday: 'long' }),
-      item: document.getElementById("item").value,
-      amount: document.getElementById("amount").value
+      day: today.toLocaleString("en-US", { weekday: "long" }),
+      item: item,
+      amount: amount
     })
-  }).then(() => alert("Expense added"));
+  });
+
+  alert("Expense added successfully");
+
+  document.getElementById("item").value = "";
+  document.getElementById("amount").value = "";
 }
 
 function getTotal() {
