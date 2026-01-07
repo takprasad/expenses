@@ -1,80 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Expense Tracker</title>
-  <style>
-    body {
-      font-family: Arial;
-      max-width: 400px;
-      margin: auto;
-      padding: 20px;
-    }
-    input, button {
-      width: 100%;
-      margin: 6px 0;
-      padding: 10px;
-    }
-  </style>
+  <title>Add Name</title>
 </head>
 <body>
+  <h2>Add Name</h2>
 
-<h2>Daily Expense Tracker</h2>
-<p id="date"></p>
+  <input type="text" id="name" placeholder="Enter name">
+  <button onclick="addName()">Submit</button>
 
-<input id="item" placeholder="Item name" />
-<input id="amount" type="number" placeholder="Amount" />
-<button onclick="addExpense()">Add Expense</button>
+  <p id="msg"></p>
 
-<button onclick="getTotal()">Show Total</button>
-<h3 id="total"></h3>
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbx-JpR54kcYs2WWjWi2r44_um0e__YDwRjv0CEpxKfNeqBwbI7Cp4TST7w9dD9R6qVy/exec";
 
-<script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzatC5A35CqCseJdSuzjxBJdriyvkxl7XBDY-6Ae-s2glI_AGrEXLMX134hzN802DYk/exec";
+    function addName() {
+      const name = document.getElementById("name").value;
 
-const today = new Date();
-document.getElementById("date").innerText =
-  today.toDateString();
-
-function addExpense() {
-  const item = document.getElementById("item").value;
-  const amount = document.getElementById("amount").value;
-
-  if (!item || !amount) {
-    alert("Please enter item and amount");
-    return;
-  }
-
-  const today = new Date();
-
-  fetch(API_URL, {
-    method: "POST",
-    mode: "no-cors",      // ⭐ THIS IS THE FIX
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      date: today.toLocaleDateString(),
-      day: today.toLocaleString("en-US", { weekday: "long" }),
-      item: item,
-      amount: amount
-    })
-  });
-
-  alert("Expense added successfully");
-
-  document.getElementById("item").value = "";
-  document.getElementById("amount").value = "";
-}
-
-function getTotal() {
-  fetch(API_URL)
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById("total").innerText =
-        "Total: ₹ " + data.total;
-    });
-}
-</script>
-
+      fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("msg").innerText = "✅ Name added!";
+      })
+      .catch(() => {
+        document.getElementById("msg").innerText = "❌ Error";
+      });
+    }
+  </script>
 </body>
 </html>
