@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Expense Tracker</title>
+  <style>
+    body {
+      font-family: Arial;
+      max-width: 400px;
+      margin: auto;
+      padding: 20px;
+    }
+    input, button {
+      width: 100%;
+      margin: 6px 0;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Daily Expense Tracker</h2>
+<p id="date"></p>
+
+<input id="item" placeholder="Item name" />
+<input id="amount" type="number" placeholder="Amount" />
+<button onclick="addExpense()">Add Expense</button>
+
+<button onclick="getTotal()">Show Total</button>
+<h3 id="total"></h3>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzatC5A35CqCseJdSuzjxBJdriyvkxl7XBDY-6Ae-s2glI_AGrEXLMX134hzN802DYk/exec";
+
+const today = new Date();
+document.getElementById("date").innerText =
+  today.toDateString();
+
+function addExpense() {
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      date: today.toLocaleDateString(),
+      day: today.toLocaleString('en-us', { weekday: 'long' }),
+      item: document.getElementById("item").value,
+      amount: document.getElementById("amount").value
+    })
+  }).then(() => alert("Expense added"));
+}
+
+function getTotal() {
+  fetch(API_URL)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("total").innerText =
+        "Total: ₹ " + data.total;
+    });
+}
+</script>
+
+</body>
+</html>
