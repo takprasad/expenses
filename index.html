@@ -283,6 +283,51 @@
       margin: 0;
     }
 
+    .worker-checkbox-list {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 16px;
+      background: #f8f9fa;
+    }
+
+    .worker-checkbox-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      transition: background 0.2s;
+    }
+
+    .worker-checkbox-item:hover {
+      background: #e9ecef;
+    }
+
+    .worker-checkbox-item input[type="checkbox"] {
+      width: auto;
+      margin-right: 12px;
+      cursor: pointer;
+    }
+
+    .worker-checkbox-info {
+      flex: 1;
+    }
+
+    .worker-checkbox-name {
+      font-weight: 600;
+      color: #333;
+      font-size: 15px;
+    }
+
+    .worker-checkbox-rate {
+      color: #666;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
     @media (max-width: 768px) {
       .app-container {
         grid-template-columns: 1fr;
@@ -313,7 +358,7 @@
               </div>
               <div class="radio-option">
                 <input type="radio" id="typeWorker" name="expenseType" value="worker" onchange="toggleExpenseType()">
-                <label for="typeWorker" style="margin: 0;">From Worker</label>
+                <label for="typeWorker" style="margin: 0;">Select Workers</label>
               </div>
             </div>
           </div>
@@ -332,15 +377,10 @@
 
           <div id="workerEntry" style="display: none;">
             <div class="form-group">
-              <label for="workerSelect">Select Worker</label>
-              <select id="workerSelect">
-                <option value="">-- Select a worker --</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label for="workerAmount">Amount (₹)</label>
-              <input type="number" id="workerAmount" placeholder="Rate will auto-fill" readonly>
+              <label>Select Workers (their rates will be added)</label>
+              <div class="worker-checkbox-list" id="workerCheckboxList">
+                <div class="empty-state" style="padding: 20px;">No workers available. Add workers in the Manage Workers tab.</div>
+              </div>
             </div>
           </div>
           
@@ -397,7 +437,6 @@
       
       document.getElementById('expenseForm').addEventListener('submit', handleExpenseSubmit);
       document.getElementById('workerForm').addEventListener('submit', handleWorkerSubmit);
-      document.getElementById('workerSelect').addEventListener('change', handleWorkerSelect);
     });
 
     // Tab switching
@@ -425,18 +464,6 @@
       document.getElementById('workerEntry').style.display = isManual ? 'none' : 'block';
     }
 
-    // Handle worker selection
-    function handleWorkerSelect() {
-      const select = document.getElementById('workerSelect');
-      const selectedWorker = workers.find(w => w.name === select.value);
-      
-      if (selectedWorker) {
-        document.getElementById('workerAmount').value = selectedWorker.rate;
-      } else {
-        document.getElementById('workerAmount').value = '';
-      }
-    }
-
     // Load workers
     async function loadWorkers() {
       try {
@@ -446,7 +473,7 @@
         if (data.status === 'success') {
           workers = data.workers;
           updateWorkerList();
-          updateWorkerSelect();
+          updateWorkerCheckboxList();
         }
       } catch (error) {
         console.error('Error loading workers:', error);
@@ -473,11 +500,24 @@
       `).join('');
     }
 
-    // Update worker select dropdown
-    function updateWorkerSelect() {
-      const select = document.getElementById('workerSelect');
-      select.innerHTML = '<option value="">-- Select a worker --</option>' +
-        workers.map(worker => `<option value="${escapeHtml(worker.name)}">${escapeHtml(worker.name)} - ₹${worker.rate}</option>`).join('');
+    // Update worker checkbox list
+    function updateWorkerCheckboxList() {
+      const listDiv = document.getElementById('workerCheckboxList');
+      
+      if (workers.length === 0) {
+        listDiv.innerHTML = '<div class="empty-state" style="padding: 20px;">No workers available. Add workers in the Manage Workers tab.</div>';
+        return;
+      }
+
+      listDiv.innerHTML = workers.map((worker, index) => `
+        <div class="worker-checkbox-item">
+          <input type="checkbox" id="worker_${index}" value="${escapeHtml(worker.name)}" data-rate="${worker.rate}">
+          <label for="worker_${index}" class="worker-checkbox-info" style="cursor: pointer; margin: 0;">
+            <div class="worker-checkbox-name">${escapeHtml(worker.name)}</div>
+            <div class="worker-checkbox-rate">Rate: ₹${worker.rate}</div>
+          </label>
+        </div>
+      `).join('');
     }
 
     // Handle expense submission
@@ -485,45 +525,56 @@
       e.preventDefault();
       
       const isManual = document.getElementById('typeManual').checked;
-      let item, amount;
+      let expensesToAdd = [];
 
       if (isManual) {
-        item = document.getElementById('item').value.trim();
-        amount = parseFloat(document.getElementById('amount').value);
-      } else {
-        const workerName = document.getElementById('workerSelect').value;
-        amount = parseFloat(document.getElementById('workerAmount').value);
-        
-        if (!workerName) {
-          showMessage('expenseMessage', 'Please select a worker', 'error');
+        const item = document.getElementById('item').value.trim();
+        const amount = parseFloat(document.getElementById('amount').value);
+
+        if (!item || !amount || amount <= 0) {
+          showMessage('expenseMessage', 'Please enter valid item and amount', 'error');
           return;
         }
-        
-        item = workerName;
-      }
 
-      if (!item || !amount || amount <= 0) {
-        showMessage('expenseMessage', 'Please enter valid item and amount', 'error');
-        return;
+        expensesToAdd.push({ item, amount });
+      } else {
+        // Get all checked workers
+        const checkboxes = document.querySelectorAll('#workerCheckboxList input[type="checkbox"]:checked');
+        
+        if (checkboxes.length === 0) {
+          showMessage('expenseMessage', 'Please select at least one worker', 'error');
+          return;
+        }
+
+        checkboxes.forEach(checkbox => {
+          expensesToAdd.push({
+            item: checkbox.value,
+            amount: parseFloat(checkbox.dataset.rate)
+          });
+        });
       }
 
       const form = document.getElementById('expenseForm');
       form.classList.add('loading');
 
       try {
-        const response = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'addExpense', item, amount })
-        });
+        // Add all expenses
+        for (const expense of expensesToAdd) {
+          await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'addExpense', item: expense.item, amount: expense.amount })
+          });
+        }
 
-        showMessage('expenseMessage', 'Expense added successfully! ✓', 'success');
+        const count = expensesToAdd.length;
+        showMessage('expenseMessage', `${count} expense${count > 1 ? 's' : ''} added successfully! ✓`, 'success');
         form.reset();
         toggleExpenseType();
         
       } catch (error) {
-        showMessage('expenseMessage', 'Error adding expense. Please try again.', 'error');
+        showMessage('expenseMessage', 'Error adding expenses. Please try again.', 'error');
         console.error('Error:', error);
       } finally {
         form.classList.remove('loading');
